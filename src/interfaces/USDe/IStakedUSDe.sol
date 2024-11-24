@@ -56,4 +56,6 @@ interface IStakedUSDe is IERC4626 {
   function unstake(address receiver) external;
 
   function setCooldownDuration(uint24 duration) external;
+
+  function grantRole(bytes32 role, address account) external;
 }

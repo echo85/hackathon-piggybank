@@ -18,8 +18,8 @@ contract PiggyTest is Test {
 
     bytes32 private constant REWARDER_ROLE = keccak256("REWARDER_ROLE");
     // Fuzz from $0.01 of 1e6 stable coins up to 1 trillion of a 1e18 coin
-    uint256 public maxFuzzAmount = 1e18;
-    uint256 public minFuzzAmount = 10_000;
+    uint256 public maxFuzzAmount = 500000 * 1e18;
+    uint256 public minFuzzAmount = 100 * 1e18;
     ERC20 public asset;
     address public base;
     address public from;
@@ -63,13 +63,16 @@ contract PiggyTest is Test {
         vm.prank(management);
         piggy.setUniFees(erc20,address(asset),poolFee1);
         console2.log("contract deployed", address(piggy));
+
         
     }
 
-    /*function test_rewards(uint256 _amount, uint16 _profitFactor) public {
+    function test_rewards(uint256 _amount, uint16 _profitFactor) public {
         vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
          _profitFactor = uint16(bound(uint256(_profitFactor), 10, MAX_BPS));
         console2.log("Total amount", _amount);
+
+        _liquidity(_amount);
 
         // Deposit USDe into Piggy
         uint256 balanceBefore = asset.balanceOf(user);
@@ -79,17 +82,16 @@ contract PiggyTest is Test {
         asset.approve(address(piggy), _amount);
 
         vm.prank(user);
-        uint256 shares = piggy.deposit(_amount, user);
+        piggy.deposit(_amount, user);
         
-        assertEq(piggy.totalSupply(), shares, "!totalAssets");
         console2.log("Balance of user asset", asset.balanceOf(user));
         console2.log("Balance of user piggy", piggy.balanceOf(user));
         console2.log("Total assets on piggy", piggy.totalAssets());
 
         skip(7 days);
-        _earnRewards(_amount, _profitFactor);
+        _earnRewards(_profitFactor);
         console2.log("Total assets on piggy after Rewards", piggy.totalAssets());
-    }*/
+    }
 
     function _earnRewards(uint16 _profitFactor) internal {
          // Simulating transferInRewards() of USDe
@@ -110,7 +112,7 @@ contract PiggyTest is Test {
         //console2.log("Total assets on sUSDe after", IStakedUSDe(vault).totalAssets());
     }
 
-   /*function test_harvest(uint256 _amount, uint16 _profitFactor) public {
+   function test_harvest(uint256 _amount, uint16 _profitFactor) public {
         vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
          _profitFactor = uint16(bound(uint256(_profitFactor), 10, MAX_BPS));
         console2.log("Total amount of USDe", _amount);
@@ -128,8 +130,8 @@ contract PiggyTest is Test {
         console2.log("Balance of user piggy", piggy.balanceOf(user));
         console2.log("Total assets on piggy", piggy.totalAssets());
 
-        _harvest(_amount, _profitFactor);
-    }*/
+        _harvest(_profitFactor);
+    }
 
     
     function _harvest(uint16 _profitFactor) internal {
@@ -152,11 +154,27 @@ contract PiggyTest is Test {
         console2.log("Total assets on piggy after second harvest", totalAsset1);
     }
 
+    function _liquidity(uint256 _amount) internal {
+         // Liquidity
+        uint256 liquidity = _amount * 20 / 100;
+        console.log("Liquidity", liquidity);
+        vm.prank(management);
+        deal(address(asset), management, liquidity);
+
+        vm.prank(management);
+        asset.approve(address(piggy), liquidity);
+
+        vm.prank(management);
+        piggy.deposit(liquidity, management);
+    }
+
     function test_withdrawn(uint256 _amount, uint16 _profitFactor) public {
         vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
          _profitFactor = uint16(bound(uint256(_profitFactor), 10, MAX_BPS));
         console2.log("Total amount of USDe user wants to deposit", _amount);
 
+        _liquidity(_amount);
+        
         // Deposit USDe into Piggy
         uint256 balanceBefore = asset.balanceOf(user);
         deal(address(asset), user, balanceBefore + _amount);
@@ -186,7 +204,40 @@ contract PiggyTest is Test {
         piggy.unstake(user);
         console2.log("Total assets on piggy after user unstake", piggy.totalAssets());
         assertGt(asset.balanceOf(user),_amount);
+    }
 
+    function test_rebalance(uint256 _amount, uint16 _profitFactor) public {
+        vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
+         _profitFactor = uint16(bound(uint256(_profitFactor), 10, MAX_BPS));
+        console2.log("Total amount of USDe user wants to deposit", _amount);
+
+        _liquidity(_amount);
+        
+        // Deposit USDe into Piggy
+        uint256 balanceBefore = asset.balanceOf(user);
+        deal(address(asset), user, balanceBefore + _amount);
+
+        vm.prank(user);
+        asset.approve(address(piggy), _amount);
+
+        vm.prank(user);
+        piggy.deposit(_amount, user);
+        console2.log("Total ERC20 on piggy after deposit of user", ERC20(erc20).balanceOf(address(piggy)));
+        
+        deal(address(erc20), address(piggy), _amount);
+        console2.log("Total ERC20 on piggy after airdrop", ERC20(erc20).balanceOf(address(piggy)));
+        
+        // Cool Down Period
+        skip(7 days);
+        vm.prank(keeper);
+        piggy.rebalance();
+        uint256 totalERC20 = ERC20(erc20).balanceOf(address(piggy));
+        uint256 totalAsset = piggy.totalAssets();
+        uint256 percentage = 20;
+        uint256 maxClaimable = (totalAsset * percentage) / 100;
+        assertLt(totalERC20, maxClaimable);
+        console2.log("Total ERC20 on piggy after rebalance", ERC20(erc20).balanceOf(address(piggy)));
+        
     }
 
     /*function test_swap(uint256 _amount) public {

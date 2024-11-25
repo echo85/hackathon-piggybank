@@ -10,6 +10,7 @@ remappings = [
     "@tokenized-strategy/=lib/tokenized-strategy/src/",
     "@periphery/=lib/tokenized-strategy-periphery/src/",
     "@uniswap-periphery/=lib/v3-periphery/contracts/",
+    "@uniswap-core/=lib/v3-core/contracts/",
 ]
 
 [rpc_endpoints]

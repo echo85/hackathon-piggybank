@@ -3,8 +3,6 @@ pragma solidity ^0.8.13;
 
 import {UniswapV3Swapper} from "src/UniswapV3Swapper.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IQuoter} from "@uniswap-periphery/interfaces/IQuoter.sol";
-
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {IStakedUSDe} from "src/interfaces/USDe/IStakedUSDe.sol";
@@ -23,14 +21,15 @@ struct UserCooldown {
 
 contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
     using SafeERC20 for IERC20;
-
-    uint256 public number;
-    ERC20 public immutable erc20;
+    address erc20;
     uint104 public cooldownTimeEnd;
     uint256 public lastSnapshotValue;
     uint256 private claimableShare;
     uint24 public cooldownDuration;
-    IQuoter public immutable quoter;
+    uint256 public performanceFee = 100;
+    uint256 public percentageERC20 = 20;
+    bytes32 public priceFeedIdERC20 = 0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace; // WETH/USD     
+    bytes32 public priceFeedIdUSDe = 0x6ec879b1e9963de5ee97e9c8710b742d6228252a5e2ca12d4ae81d7fe5ee8c5d; // USDe/USD
 
     mapping(address => UserCooldown) public cooldowns;
     /// @notice Error emitted when cooldown value is invalid
@@ -52,11 +51,23 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
 
         require(IStakedUSDe(_vault).asset() == address(asset_), "wrong vault");
         vault = IStakedUSDe(_vault);
-        erc20 = ERC20(_erc20);
+        erc20 = _erc20;
         ERC20(asset()).approve(_vault, type(uint256).max);
         _keeper = keeper;
         pyth = IPyth(pythContract);
-        quoter = IQuoter(0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6);
+    }
+
+    function updateERC20(address _erc20, bytes32 _priceFeedId) external onlyOwner {
+         erc20 = _erc20;
+         priceFeedIdERC20 = _priceFeedId;
+    }
+
+    function updateKeeper(address keeper) external onlyOwner {
+         _keeper = keeper;
+    }
+
+    function updateFee(uint256 _performanceFee) external onlyOwner {
+         performanceFee = _performanceFee;
     }
 
    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
@@ -69,35 +80,21 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
     function cooldownShares(uint256 shares) external returns (uint256 assets) {
         if (shares > maxRedeem(msg.sender)) revert ExcessiveRedeemAmount();
 
-        assets = previewRedeem(shares);
+        assets = _convertToAssets(shares, Math.Rounding.Floor);
 
         cooldowns[msg.sender].cooldownEnd = uint104(block.timestamp) + cooldownDuration;
         cooldowns[msg.sender].underlyingAmount += uint152(assets);
         uint256 usdeAvailable = _valueOfAsset();
-        console.log("Cooldown request for %s, USDe value on piggy: %s Total assets %s", assets, _valueOfAsset(), totalAssets());
+        console.log("Cooldown request for %s, sUSDe value on piggy: %s Total assets %s", assets, _valueOfVault(),  totalAssets());
+        
+        uint256 value = (_valueOfErc20() * 100) / totalAssets();
+        console.log("Value Percentage", value);
+        
         if (usdeAvailable < assets) {
-                // Calcola il deficit da coprire tramite sUSDe e WETH
                 uint256 deficit = assets - usdeAvailable;
-                uint256 erc20total = _valueOfErc20();
+                require(_valueOfVault() >= deficit, "Insufficient Liquidity");
 
-                uint256 toSwap = (deficit > erc20total) ? erc20total : deficit;
-                // Swap ERC20 to USDe
-                uint256 swappedFromERC20 = 0;
-                if(toSwap > 0)
-                    swappedFromERC20 = _swapERC20(address(erc20),asset(),toSwap);
-                console.log("Swapped %s", swappedFromERC20, deficit);
-                 // Se ancora non basta, swap WETH in USDe
-                if (swappedFromERC20 < deficit) {
-                    uint256 remainingDeficit = deficit - swappedFromERC20;
-                    console.log("Remain Deficit %s", remainingDeficit);
-                    console.log("Remain sUSDe %s", _valueOfVault());
-                    uint256 remainingDeficit1 = (remainingDeficit > _valueOfVault()) ? remainingDeficit - _valueOfVault() : remainingDeficit;
-                    remainingDeficit = (remainingDeficit > _valueOfVault()) ?_valueOfVault() : remainingDeficit;
-                   
-                    vault.cooldownAssets(remainingDeficit);
-                    
-                    console.log("Remainign Deficit", remainingDeficit1);
-                }  
+                vault.cooldownAssets(deficit);
         }
         
     }
@@ -105,10 +102,14 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
         if (assets > maxWithdraw(msg.sender)) revert ExcessiveWithdrawAmount();
 
         shares = _convertToShares(assets, Math.Rounding.Floor);
-        cooldowns[msg.sender].cooldownEnd = uint104(block.timestamp) + cooldownDuration;
-        cooldowns[msg.sender].underlyingAmount += uint152(assets);
+        uint256 usdeAvailable = _valueOfAsset();
         
-        vault.cooldownAssets(assets);
+        if (usdeAvailable < assets) {
+                uint256 deficit = assets - usdeAvailable;
+                require(_valueOfVault() >= deficit, "Insufficient Liquidity");
+
+                vault.cooldownAssets(deficit);
+        }
     }
 
     function unstake(address _receiver) public {
@@ -116,18 +117,19 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
         vault.unstake(address(this));
         UserCooldown storage userCooldown = cooldowns[msg.sender];
         uint256 assets = userCooldown.underlyingAmount;
-        console.log("Asset of the unstake user", assets);
+        console.log("Asset the user wants to unstake", assets);
         if (block.timestamp >= userCooldown.cooldownEnd || cooldownDuration == 0) {
             userCooldown.cooldownEnd = 0;
             userCooldown.underlyingAmount = 0;
 
             uint256 shares = _convertToShares(assets, Math.Rounding.Floor);
+            console.log("Asset avaiable", _valueOfAsset());
             console.log("Shares of the unstake user", shares);
             console.log("Balance of the user piggy", balanceOf(msg.sender));
 
             // Verifica quanto USDe è già disponibile nel vault
             require(_valueOfAsset() >= assets, "Insufficient USDe after swaps");
-                
+            if(shares > balanceOf(msg.sender)) shares = balanceOf(msg.sender);
             _withdraw(msg.sender, _receiver, msg.sender, assets, shares);
          } else {
             revert InvalidCooldown();
@@ -157,13 +159,12 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
     {
         if(claimableShare > 0 && block.timestamp > cooldownTimeEnd) {
                 console.log("Claimable Shares",claimableShare);
-                
                 vault.unstake(address(this));
                 uint256 assetsToSwap = vault.convertToAssets(claimableShare);
                 uint256 balanceAsset = ERC20(asset()).balanceOf(address(this));
                 if(assetsToSwap > balanceAsset) assetsToSwap = balanceAsset;
                 console.log("Asset to swap", assetsToSwap);
-                _swap(asset(), address(erc20), assetsToSwap);
+                _swap(address(asset()), erc20, assetsToSwap);
                 claimableShare = 0;
                 lastSnapshotValue = _valueOfVault();
             }
@@ -174,8 +175,12 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
                 if(previewReedem > lastSnapshotValue) {
                     uint256 assetToClaim = vault.previewRedeem(vault.balanceOf(address(this))) - lastSnapshotValue;
                     console.log("assetToClaim ", assetToClaim);
-                    if( assetToClaim > 0 ) 
+                    uint256 valueErc20 = (_valueOfErc20() * 100) / totalAssets();
+                    console.log("ERC20 NO Claimable Percentage", valueErc20);
+                    if( assetToClaim > 0 && valueErc20 < percentageERC20) 
                     {
+                        uint256 maxClaimable = (totalAssets() * percentageERC20) / 100;
+                        assetToClaim = (assetToClaim > maxClaimable) ? maxClaimable : assetToClaim;
                         claimableShare = vault.cooldownAssets(assetToClaim);
                         cooldownTimeEnd = uint104(block.timestamp) + 7 days;
                     }
@@ -186,52 +191,38 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
         _totalAssets = totalAssets();
     }
 
-    // onlyforTest
-    function swap(address from, address to) public
+    function rebalance() public
         onlyKeeper
-        returns (uint256 _amountOut)
+        returns (uint256 _totalAssets)
     {
-        uint256 amount = ERC20(from).balanceOf(address(this));
-        _amountOut = _swapFrom(from, to, amount, 0);   
+        uint256 valueErc20 = _valueOfErc20();
+        uint256 maxClaimable = (totalAssets() * percentageERC20) / 100;
+        uint256 toSwap = (valueErc20 > maxClaimable) ? valueErc20 - maxClaimable : 0;
+        if(toSwap > 0)
+            _swapERC20(erc20, address(asset()),toSwap);
+         
+        _totalAssets = totalAssets();
     }
 
     function _swap(address from, address to, uint256 amount) internal
         returns (uint256 _amountOut)
     {   
-        console.log("Swapped USDe", amount);
         uint256 _amountSwap = _swapFrom(from, base, amount, 0);   
-        console.log("Swapped USDe for USDt", _amountSwap);
         _amountOut = _swapFrom(base, to, _amountSwap, 0);
-        console.log("Swapped USDT for WETH", _amountOut);
     }
 
     function _swapERC20(address from, address to, uint256 amount) internal
         returns (uint256 _amountOut)
     {   
-        console.log("Wanted to Swap ERC20 asset amount", amount);
-        console.log("Balance of ERC20", erc20.balanceOf(address(this)));
-        
-        bytes memory path = abi.encodePacked(
-                    to,
-                    uniFees[to][base], // base-to fee
-                    base,
-                    uniFees[base][from], // from-base fee
-                    from
-                );
-
-        uint256 amountIn = quoter.quoteExactOutput(path, amount);
-         console.log("Amount in quoter", amountIn);
-        if(amountIn > erc20.balanceOf(address(this))) amountIn = erc20.balanceOf(address(this));
+       uint256 amountIn = _valueInERC20(amount);
+        if(amountIn > ERC20(erc20).balanceOf(address(this))) amountIn = ERC20(erc20).balanceOf(address(this));
         _amountOut = _swapFrom(from, to, amountIn, 0);   
-        console.log("Amount in swapped", amountIn);
-        //_amountOut = _swapFrom(base, to, _amountSwap, 0);
-        console.log("Swapped USDT for USDe", _amountOut);
     }
 
     function totalAssets() public view override returns (uint256) {
-        console.log("Sum %s + %s + %s",_valueOfVault(),_valueOfAsset(),_valueOfErc20());
-        return _valueOfVault() + _valueOfAsset() + _valueOfErc20();
-        // sUSDe (assetValue) + USDe + ERC20 
+        uint256 erc20Value = _valueOfErc20();
+        uint256 fee = (erc20Value > 0) ? (erc20Value * performanceFee) / 10_000 : 0; 
+        return _valueOfVault() + _valueOfAsset() + (erc20Value - fee);
     }
 
     function _valueOfAsset() internal view returns (uint256) {
@@ -239,11 +230,8 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
     }
 
     function _valueOfErc20() internal view returns (uint256) {
-        if(erc20.balanceOf(address(this)) == 0) return 0;
-        else {
-            bytes32 priceFeedIdERC20 = 0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace; // WETH/USD     
-            bytes32 priceFeedIdUSDe = 0x6ec879b1e9963de5ee97e9c8710b742d6228252a5e2ca12d4ae81d7fe5ee8c5d; // USDe/USD
-            
+        if(ERC20(erc20).balanceOf(address(this)) == 0) return 0;
+        else { 
             PythStructs.Price memory priceUSDeToUsd = pyth.getPriceUnsafe(priceFeedIdUSDe);
             PythStructs.Price memory priceERC20toUsd = pyth.getPriceUnsafe(priceFeedIdERC20);
             
@@ -252,28 +240,20 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
             priceERC20toUsd.expo,
             18);
 
-            //console.log("ERC20 to USD %s", basePriceERC20toUsd);
-
             uint256 basePriceUSDeToUsd = PythUtils.convertToUint(
             priceUSDeToUsd.price,
             priceUSDeToUsd.expo,
             18);
 
-            //console.log("USD to USDe %s", basePriceUSDeToUsd);
-
-            //console.log("Balance of ERC20", erc20.balanceOf(address(this)));
             uint256 wethPriceInUsde = basePriceERC20toUsd / basePriceUSDeToUsd;
-            return  erc20.balanceOf(address(this)) * wethPriceInUsde;
+            return  ERC20(erc20).balanceOf(address(this)) * wethPriceInUsde;
             
         }
     }
 
     function _valueInERC20(uint256 _amount) internal view returns (uint256) {
-        if(erc20.balanceOf(address(this)) == 0) return 0;
+        if(ERC20(erc20).balanceOf(address(this)) == 0) return 0;
         else {
-            bytes32 priceFeedIdERC20 = 0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace; // WETH/USD     
-            bytes32 priceFeedIdUSDe = 0x6ec879b1e9963de5ee97e9c8710b742d6228252a5e2ca12d4ae81d7fe5ee8c5d; // USDe/USD
-            
             PythStructs.Price memory priceUSDeToUsd = pyth.getPriceUnsafe(priceFeedIdUSDe);
             PythStructs.Price memory priceERC20toUsd = pyth.getPriceUnsafe(priceFeedIdERC20);
             
@@ -282,18 +262,12 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
             priceERC20toUsd.expo,
             18);
 
-            console.log("ERC20 to USD %s", basePriceERC20toUsd);
-
             uint256 basePriceUSDeToUsd = PythUtils.convertToUint(
             priceUSDeToUsd.price,
             priceUSDeToUsd.expo,
             18);
 
-            console.log("USD to USDe %s", basePriceUSDeToUsd);
-
-            //console.log("Balance of ERC20", erc20.balanceOf(address(this)));
             uint256 wethPriceInUsde =   _amount * basePriceUSDeToUsd / basePriceERC20toUsd;
-            console.log("USDe to USD / ERC20 to USD", wethPriceInUsde);
             return  wethPriceInUsde;
             
         }
@@ -311,5 +285,4 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
     function decimals() public pure override(ERC4626, ERC20) returns (uint8) {
         return 18;
     }
-
 }

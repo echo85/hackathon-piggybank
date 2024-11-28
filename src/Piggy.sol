@@ -25,7 +25,7 @@ contract Piggy is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
     uint104 public cooldownTimeEnd;
     uint256 public lastSnapshotValue;
     uint256 private claimableShare;
-    uint24 public cooldownDuration;
+    uint24 public cooldownDuration = 7 days;
     uint256 public performanceFee = 100;
     uint256 public percentageERC20 = 20;
     bytes32 public priceFeedIdERC20 = 0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace; // WETH/USD     

@@ -47,18 +47,9 @@ contract PiggyTest is Test {
 
         vm.prank(management);
         piggy.setUniFees(address(asset),base,poolFee1);
-
-        vm.prank(management);
-        piggy.setUniFees(from,base,poolFee1); // FROM DAI TO ETH
-
-        vm.prank(management);
-        piggy.setUniFees(address(asset),base,poolFee1);
         
         vm.prank(management);
         piggy.setUniFees(base,erc20,poolFee1);
-
-        vm.prank(management);
-        piggy.setUniFees(address(asset),erc20,poolFee1);
 
         vm.prank(management);
         piggy.setUniFees(erc20,address(asset),poolFee1);

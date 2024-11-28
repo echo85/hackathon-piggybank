@@ -19,6 +19,6 @@ ble = "${BLE_RPC_URL}"
 
 [etherscan]
 sepolia = { key = "${ETHERSCAN_API_KEY}" }
-
+unknown_chain = { key = "${TENDERLY_ACCESS_KEY}", chain = 73571, url = "${TENDERLY_VIRTUAL_TESTNET_RPC_URL}/verify/etherscan" }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

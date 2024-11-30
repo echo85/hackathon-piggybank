@@ -7,12 +7,12 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "forge-std/console2.sol";
 import {IStakedUSDe} from "src/interfaces/USDe/IStakedUSDe.sol";
 
-contract PiggyTest is Test {
+contract SepoliaTest is Test {
     PiggyBank public piggy;
     address public user = address(10);
     address public keeper = address(4);
     address public management = address(1);
-    address public ownderSUSDe = 0x3B0AAf6e6fCd4a7cEEf8c92C32DFeA9E64dC1862;
+    address public ownderSUSDe = 0x1B6877c6Dac4b6De4c5817925DC40E2BfdAFc01b; //not sure what is the owner of sUSDe on sepolia
 
     uint256 public MAX_BPS = 10_000;
 
@@ -30,29 +30,33 @@ contract PiggyTest is Test {
 
     function setUp() public {
         vm.prank(management);
-        asset = ERC20(0x4c9EDD5852cd905f086C759E8383e09bff1E68B3); // USDE MAINNET
-        vault = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497; // SUDSE MAINNET
-        base = 0xdAC17F958D2ee523a2206206994597C13D831ec7; // USDT
-        erc20 = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // WETH
-        address pythAddress = 0x4305FB66699C3B2702D4d05CF36551390A4c69C6;
+        asset = ERC20(0xf805ce4F96e0EdD6f0b6cd4be22B34b92373d696); // USDE 
+        vault = 0x1B6877c6Dac4b6De4c5817925DC40E2BfdAFc01b; // SUDSE 
+        base = 0xf805ce4F96e0EdD6f0b6cd4be22B34b92373d696; // USDE as BASE
+        erc20 = 0x6296665981B7bf5E39B8b7a1021692289212825A; // PIGGY TOKEN as ERC20
+        address pythAddress = 0xA2aa501b19aff244D90cc15a4Cf739D2725B5729;
         bytes32 priceFeedIdUSDe = 0x6ec879b1e9963de5ee97e9c8710b742d6228252a5e2ca12d4ae81d7fe5ee8c5d;
-        address uniswapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564; // UNISWAP ROUTER
+        address uniswapRouter = 0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E; // UNISWAP ROUTER
     
+        console2.log("test",IStakedUSDe(vault).owner.address);
         piggy = new PiggyBank(asset, management, keeper, vault, erc20, pythAddress, priceFeedIdUSDe, uniswapRouter);
+
+        
 
         vm.prank(management);
         piggy.setBase(address(base));
 
         vm.prank(management);
-        piggy.setUniFees(address(asset),base,poolFee1);
+        piggy.setUniFees(address(asset),base,poolFee3);
         
         vm.prank(management);
-        piggy.setUniFees(base,erc20,poolFee1);
+        piggy.setUniFees(base,erc20,poolFee3);
 
         vm.prank(management);
-        piggy.setUniFees(erc20,address(asset),poolFee1);
+        piggy.setUniFees(erc20,address(asset),poolFee3);
         console2.log("contract deployed", address(piggy));
-
+        
+        
         
     }
 

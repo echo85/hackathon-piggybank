@@ -58,4 +58,8 @@ interface IStakedUSDe is IERC4626 {
   function setCooldownDuration(uint24 duration) external;
 
   function grantRole(bytes32 role, address account) external;
+
+  function cooldownDuration() external view returns (uint24 duration);
+
+  function owner() external view returns (address owner);
 }

@@ -23,7 +23,7 @@ name: 'Virtual Ethereum Mainnet'<br>
 nativeCurrency: vEther<br>
 vETH<br>
 decimals: 18<br>
-rpcUrls: 'https://virtual.mainnet.rpc.tenderly.co/0321deab-5f87-44ec-82d3-d58bf8876874'<br>
+rpcUrls: 'https://virtual.mainnet.rpc.tenderly.co/64aff5e0-624b-4af0-b055-a6fedeb2dd83<br>
 block explorer: https://dashboard.tenderly.co/explorer/vnet/64aff5e0-624b-4af0-b055-a6fedeb2dd83/transactions<br>
 
 **VirtualTNest  Smart Contract**

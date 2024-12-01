@@ -37,71 +37,14 @@ contract EthenaTest is Test {
         address pythAddress = 0x2880aB155794e7179c9eE2e38200202908C17B43;
         bytes32 priceFeedIdUSDe = 0x6ec879b1e9963de5ee97e9c8710b742d6228252a5e2ca12d4ae81d7fe5ee8c5d;
         address uniswapRouter = 0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E; // UNISWAP ROUTER
-    
-        piggy = new PiggyBankOFT(asset, management, keeper, vault, erc20, pythAddress, priceFeedIdUSDe, uniswapRouter);
+        address endpointV2address = 0x6Ac7bdc07A0583A362F1497252872AE6c0A5F5B8;
 
-        vm.prank(management);
-        piggy.setBase(address(base));
+        piggy = new PiggyBankOFT("Piggy Bank", "pUSDe", endpointV2address, management);
 
-        vm.prank(management);
-        piggy.setUniFees(address(asset),base,poolFee3);
-        
-        vm.prank(management);
-        piggy.setUniFees(base,erc20,poolFee3);
-
-        vm.prank(management);
-        piggy.setUniFees(erc20,address(asset),poolFee3);
         console2.log("contract deployed", address(piggy));
         
     }
 
-    function test_deposit(uint256 _amount, uint16 _profitFactor) public {
-        vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
-         _profitFactor = uint16(bound(uint256(_profitFactor), 10, MAX_BPS));
-        console2.log("Total amount", _amount);
-
-        // Deposit USDe into Piggy
-        uint256 balanceBefore = asset.balanceOf(user);
-        deal(address(asset), user, balanceBefore + _amount);
-
-        vm.prank(user);
-        asset.approve(address(piggy), _amount);
-
-        vm.prank(user);
-        piggy.deposit(_amount, user);
-        
-        console2.log("Balance of user asset", asset.balanceOf(user));
-        console2.log("Balance of user piggy", piggy.balanceOf(user));
-        console2.log("Total assets on piggy", piggy.totalAssets());
-
-    }
-
-    function test_unstake(uint256 _amount, uint16 _profitFactor) public {
-        vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
-         _profitFactor = uint16(bound(uint256(_profitFactor), 10, MAX_BPS));
-        console2.log("Total amount", _amount);
-
-        // Deposit USDe into Piggy
-        uint256 balanceBefore = asset.balanceOf(user);
-        deal(address(asset), user, balanceBefore + _amount);
-
-        vm.prank(user);
-        asset.approve(address(piggy), _amount);
-
-        vm.prank(user);
-        uint256 pUSDeAmount = piggy.deposit(_amount, user);
-        
-        console2.log("Balance of user asset", asset.balanceOf(user));
-        console2.log("Balance of user piggy", piggy.balanceOf(user));
-        console2.log("Total assets on piggy", piggy.totalAssets());
-
-        vm.prank(user);
-        piggy.cooldownShares(pUSDeAmount);
-        
-        skip(7 days);
-        vm.prank(user);
-        piggy.unstake(user);
-    }
    
 
 }

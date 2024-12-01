@@ -158,7 +158,7 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
         onlyKeeper
         returns (uint256 _totalAssets)
     {
-        if(claimableShare > 0 && block.timestamp > cooldownTimeEnd) {
+            if(claimableShare > 0 && block.timestamp > cooldownTimeEnd) {
                 vault.unstake(address(this));
                 uint256 assetsToSwap = vault.convertToAssets(claimableShare);
                 uint256 balanceAsset = ERC20(asset()).balanceOf(address(this));
@@ -184,6 +184,28 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
             }        
 
         _totalAssets = totalAssets();
+    }
+
+    function checkerHarvest() onlyKeeper external view returns (bool canExec, bytes memory execPayload)
+    {
+        if(tx.gasprice > 80 gwei) return (false, bytes("Gas price too high"));
+        canExec = (claimableShare > 0 && block.timestamp > cooldownTimeEnd) || vault.balanceOf(address(this)) > 0;
+
+            if (canExec) return(true, bytes("Can Exec"));
+            else return(false, bytes("No vaults to harvest"));
+    }
+
+    function checkerRebalance() onlyKeeper external view returns (bool canExec, bytes memory execPayload)
+    {
+        if(tx.gasprice > 80 gwei) return (false, bytes("Gas price too high"));
+
+        uint256 valueErc20 = _valueOfErc20();
+        uint256 maxClaimable = (totalAssets() * percentageERC20) / 100;
+        uint256 toSwap = (valueErc20 > maxClaimable) ? valueErc20 - maxClaimable : 0;
+        canExec = toSwap > 0;
+
+        if (canExec) return(true, bytes("Can Rebalance"));
+        else return(false, bytes("No assets to swap"));
     }
 
     function rebalance() public

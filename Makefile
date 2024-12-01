@@ -10,10 +10,10 @@ inspect :; forge inspect ${contract} storage-layout --pretty
 
 # specify which fork to use. set this in our .env
 # if we want to test multiple forks in one go, remove this as an argument below
-FORK_URL := ${BLE_RPC_URL} # BLE_RPC_URL, ETH_RPC_URL, SEPOLIA_RPC_URL
+FORK_URL := ${ETH_RPC_URL} # BLE_RPC_URL, ETH_RPC_URL, SEPOLIA_RPC_URL
 
 # if we want to run only matching tests, set that here
-contract := Ethena
+contract := Piggy
 test := test_
 
 # local tests without fork

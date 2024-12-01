@@ -3,10 +3,12 @@ pragma solidity ^0.8.13;
 
 import {Script, console} from "forge-std/Script.sol";
 import {PiggyBank} from "../src/PiggyBank.sol";
+import {PiggyBankOFTAdapter} from "../src/PiggyBankOFTAdapter.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract PiggyBankScript is Script {
     PiggyBank public piggy;
+    PiggyBankOFTAdapter piggyOFTAdapter;
     uint24 public constant poolFee1 = 100;
     uint24 public constant poolFee3 = 300;
 
@@ -19,7 +21,8 @@ contract PiggyBankScript is Script {
     bytes32 public constant priceFeedIdUSDe = 0x6ec879b1e9963de5ee97e9c8710b742d6228252a5e2ca12d4ae81d7fe5ee8c5d;
     bytes32 public constant priceFeedIdERC20 = 0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace; 
     address public constant uniswapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564; // UNISWAP ROUTER
-    
+    address public constant endpointV2address = 0x1a44076050125825900e736c501f859c50fE728c;
+
     function setUp() public {}
 
     function run() public {
@@ -38,6 +41,9 @@ contract PiggyBankScript is Script {
         piggy.setUniFees(erc20,address(asset),poolFee1);
 
         console.log("contract deployed", address(piggy));
+
+        piggyOFTAdapter = new PiggyBankOFTAdapter(address(piggy),endpointV2address,management);
+
         vm.stopBroadcast();
 
         

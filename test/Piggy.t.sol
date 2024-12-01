@@ -229,6 +229,52 @@ contract PiggyTest is Test {
         
     }
 
+    function test_deposit(uint256 _amount) public {
+        vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
+        console2.log("Total amount", _amount);
+
+        // Deposit USDe into Piggy
+        uint256 balanceBefore = asset.balanceOf(user);
+        deal(address(asset), user, balanceBefore + _amount);
+
+        vm.prank(user);
+        asset.approve(address(piggy), _amount);
+
+        vm.prank(user);
+        piggy.deposit(_amount, user);
+        
+        console2.log("Balance of user asset", asset.balanceOf(user));
+        console2.log("Balance of user piggy", piggy.balanceOf(user));
+        console2.log("Total assets on piggy", piggy.totalAssets());
+
+    }
+
+    function test_unstake(uint256 _amount) public {
+        vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
+        console2.log("Total amount", _amount);
+
+        // Deposit USDe into Piggy
+        uint256 balanceBefore = asset.balanceOf(user);
+        deal(address(asset), user, balanceBefore + _amount);
+
+        vm.prank(user);
+        asset.approve(address(piggy), _amount);
+
+        vm.prank(user);
+        uint256 pUSDeAmount = piggy.deposit(_amount, user);
+        
+        console2.log("Balance of user asset", asset.balanceOf(user));
+        console2.log("Balance of user piggy", piggy.balanceOf(user));
+        console2.log("Total assets on piggy", piggy.totalAssets());
+
+        vm.prank(user);
+        piggy.cooldownShares(pUSDeAmount);
+        
+        skip(7 days);
+        vm.prank(user);
+        piggy.unstake(user);
+    }
+
     /*function test_swap(uint256 _amount) public {
         vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
         deal(address(asset), address(piggy), _amount);

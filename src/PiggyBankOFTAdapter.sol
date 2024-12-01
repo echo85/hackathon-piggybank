@@ -2,15 +2,12 @@
 pragma solidity ^0.8.22;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { OFT } from "@layerzerolabs/oft-evm/contracts/OFT.sol";
+import { OFTAdapter } from "@layerzerolabs/oft-evm/contracts/OFTAdapter.sol";
 
-contract PiggyOFT is OFT {
+contract PiggyBankOFTAdapter is OFTAdapter {
     constructor(
-        string memory _name,
-        string memory _symbol,
+        address _token,
         address _lzEndpoint,
-        address _delegate
-    ) OFT(_name, _symbol, _lzEndpoint, _delegate) Ownable(_delegate) {
-            
-    }
+        address _owner
+    ) OFTAdapter(_token, _lzEndpoint, _owner) Ownable(_owner) {}
 }

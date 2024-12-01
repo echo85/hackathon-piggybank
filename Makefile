@@ -10,14 +10,14 @@ inspect :; forge inspect ${contract} storage-layout --pretty
 
 # specify which fork to use. set this in our .env
 # if we want to test multiple forks in one go, remove this as an argument below
-FORK_URL := ${ETH_RPC_URL} # BLE_RPC_URL, ETH_RPC_URL, SEPOLIA_RPC_URL
+FORK_URL := ${BLE_RPC_URL} # BLE_RPC_URL, ETH_RPC_URL, SEPOLIA_RPC_URL
 
 # if we want to run only matching tests, set that here
-contract := Piggy
+contract := Ethena
 test := test_
 
 # local tests without fork
-script-ethena:; forge script script/PiggyBankEthena.s.sol:PiggyEthenaScript --rpc-url ${BLE_RPC_URL} --verify --broadcast -vvvv
+script-ethena:; forge script script/PiggyBankEthena.s.sol:PiggyEthenaScript --rpc-url ${BLE_RPC_URL} --broadcast -vvvv
 script-sepolia:; forge script script/PiggyBankSepolia.s.sol:PiggySepoliaScript --rpc-url ${SEPOLIA_RPC_URL} --broadcast --verify --etherscan-api-key ${ETHERSCAN_API_KEY} -vvvv
 script-tenderly:; forge script script/PiggyBank.s.sol:PiggyBankScript --slow --rpc-url ${TENDERLY_VIRTUAL_TESTNET_RPC_URL} --broadcast --verify --verifier-url ${TENDERLY_VERIFIER_URL} --etherscan-api-key ${TENDERLY_ACCESS_KEY} -vvvv
 test  :; forge test -vv --fork-url ${FORK_URL}

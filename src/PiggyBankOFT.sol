@@ -19,7 +19,7 @@ struct UserCooldown {
   uint152 underlyingAmount;
 }
 
-contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
+contract PiggyBankOFT is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
     using SafeERC20 for IERC20;
     address erc20;
     uint104 public cooldownTimeEnd;
@@ -49,14 +49,14 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
     ERC20Permit("pUSDe")
     Ownable(_owner) {
 
-        require(IStakedUSDe(_vault).asset() == address(asset_), "wrong vault");
+        //require(IStakedUSDe(_vault).asset() == address(asset_), "wrong vault");
         vault = IStakedUSDe(_vault);
         erc20 = _erc20;
         ERC20(asset()).approve(_vault, type(uint256).max);
         _keeper = keeper;
         pyth = IPyth(pythContract);
         priceFeedIdUSDe = _priceFeedIdUSDe;
-        cooldownDuration = vault.cooldownDuration();
+        //cooldownDuration = vault.cooldownDuration();
         router = _uniswaprouter;
     }
 
@@ -80,7 +80,7 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
         
         super._deposit(caller, receiver, assets, shares); //Deposit User USDe to SC
-        vault.deposit(assets,address(this)); //Staking USDe to Staking USD
+        //vault.deposit(assets,address(this)); //Staking USDe to Staking USD
         lastSnapshotValue = lastSnapshotValue + assets;
     }
 
@@ -92,16 +92,12 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
         cooldowns[msg.sender].cooldownEnd = uint104(block.timestamp) + cooldownDuration;
         cooldowns[msg.sender].underlyingAmount += uint152(assets);
         uint256 usdeAvailable = _valueOfAsset();
-        console.log("Cooldown request for %s, sUSDe value on piggy: %s Total assets %s", assets, _valueOfVault(),  totalAssets());
-        
-        uint256 value = (_valueOfErc20() * 100) / totalAssets();
-        console.log("Value Percentage", value);
-        
+        console.log(usdeAvailable);
+        console.log(assets);
         if (usdeAvailable < assets) {
-                uint256 deficit = assets - usdeAvailable;
-                require(_valueOfVault() >= deficit, "Insufficient Liquidity");
+                revert("Insufficient Liquidity");
 
-                vault.cooldownAssets(deficit);
+                //vault.cooldownAssets(deficit);
         }
         
     }
@@ -221,7 +217,8 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
     function totalAssets() public view override returns (uint256) {
         uint256 erc20Value = _valueOfErc20();
         uint256 fee = (erc20Value > 0) ? (erc20Value * performanceFee) / 10_000 : 0; 
-        return _valueOfVault() + _valueOfAsset() + (erc20Value - fee);
+        //return _valueOfVault() + _valueOfAsset() + (erc20Value - fee);
+        return _valueOfAsset() + (erc20Value - fee);
     }
 
     function _valueOfAsset() internal view returns (uint256) {

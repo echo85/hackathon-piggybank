@@ -4,8 +4,18 @@
 
 Piggy consists of:
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+DEMO APP
+
+https://vercel.com/carlo-falchis-projects/hackathon-piggybank-frontend
+
+FRONTEND GITHUB
+
+https://github.com/echo85/hackathon-piggybank-frontend
+
+HOW TO SET METAMASK or you WALLET for THE VIRTUAL NET TEST:
+
+chain-id: 73571,
+name: 'Virtual Ethereum Mainnet',
+nativeCurrency: { name: 'vEther', symbol: 'vETH', decimals: 18 },
+rpcUrls: 'https://virtual.mainnet.rpc.tenderly.co/0321deab-5f87-44ec-82d3-d58bf8876874'
 

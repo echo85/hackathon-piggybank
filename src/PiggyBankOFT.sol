@@ -7,6 +7,7 @@ import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/Opti
 import { IOAppCore } from "@layerzerolabs/oapp-evm/contracts/oapp/interfaces/IOAppCore.sol";
 import { SendParam, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { ILayerZeroEndpointV2, MessagingFee, MessagingReceipt, Origin } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 
 contract PiggyBankOFT is OFT {
 
@@ -29,22 +30,4 @@ contract PiggyBankOFT is OFT {
            
     }
 
-    function deposit(chaind chainid, address receiver, uint256 assets) external {
-        bytes memory _extraOptions = OptionsBuilder.newOptions().addExecutorLzReceiveOption(65000, 0);
-        SendParam memory sendParam = SendParam(
-            chainid, 
-            addressToBytes32(receiver),
-            assets,
-            assets * 9 / 10,
-            _extraOptions,
-            "",
-            ""
-        );
-
-        MessagingFee memory fee = sourceOFT.quoteSend(sendParam, false);
-
-        console.log("Fee amount: ", fee.nativeFee);
-
-        send{value: fee.nativeFee}(sendParam, fee, msg.sender);
-    }
 }

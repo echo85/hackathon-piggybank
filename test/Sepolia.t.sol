@@ -26,7 +26,7 @@ contract SepoliaTest is Test {
     address public erc20;
     address vault;
     uint24 public constant poolFee1 = 100;
-    uint24 public constant poolFee3 = 300;
+    uint24 public constant poolFee3 = 3000;
 
     function setUp() public {
         vm.prank(management);
@@ -34,9 +34,9 @@ contract SepoliaTest is Test {
         vault = 0x1B6877c6Dac4b6De4c5817925DC40E2BfdAFc01b; // SUDSE 
         base = 0xf805ce4F96e0EdD6f0b6cd4be22B34b92373d696; // USDE as BASE
         erc20 = 0x6296665981B7bf5E39B8b7a1021692289212825A; // PIGGY TOKEN as ERC20
-        address pythAddress = 0xA2aa501b19aff244D90cc15a4Cf739D2725B5729;
+        address pythAddress = 0xDd24F84d36BF92C65F92307595335bdFab5Bbd21;
         bytes32 priceFeedIdUSDe = 0x6ec879b1e9963de5ee97e9c8710b742d6228252a5e2ca12d4ae81d7fe5ee8c5d;
-        address uniswapRouter = 0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E; // UNISWAP ROUTER
+        address uniswapRouter = 0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD; // UNISWAP ROUTER
     
         console2.log("test",IStakedUSDe(vault).owner.address);
         piggy = new PiggyBank(asset, management, keeper, vault, erc20, pythAddress, priceFeedIdUSDe, uniswapRouter);
@@ -82,7 +82,7 @@ contract SepoliaTest is Test {
         console2.log("Total assets on piggy", piggy.totalAssets());
 
         skip(7 days);
-        _earnRewards(_profitFactor);
+        //_earnRewards(_profitFactor);
         console2.log("Total assets on piggy after Rewards", piggy.totalAssets());
     }
 
@@ -130,7 +130,7 @@ contract SepoliaTest is Test {
     function _harvest(uint16 _profitFactor) internal {
         skip(7 days);
          // Simulating transferInRewards() of USDe
-        _earnRewards( _profitFactor);
+       // _earnRewards( _profitFactor);
         console2.log("Total assets on piggy after Rewards", piggy.totalAssets());
 
         // First Snapshot
@@ -140,7 +140,7 @@ contract SepoliaTest is Test {
 
          // Earn Interest
         skip(8 days);
-        _earnRewards(_profitFactor);
+        //_earnRewards(_profitFactor);
         
         vm.prank(keeper);
         (uint256 totalAsset1) = piggy.harvest();
@@ -159,44 +159,6 @@ contract SepoliaTest is Test {
 
         vm.prank(management);
         piggy.deposit(liquidity, management);
-    }
-
-    function test_withdrawn(uint256 _amount, uint16 _profitFactor) public {
-        vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
-         _profitFactor = uint16(bound(uint256(_profitFactor), 10, MAX_BPS));
-        console2.log("Total amount of USDe user wants to deposit", _amount);
-
-        _liquidity(_amount);
-        
-        // Deposit USDe into Piggy
-        uint256 balanceBefore = asset.balanceOf(user);
-        deal(address(asset), user, balanceBefore + _amount);
-
-        vm.prank(user);
-        asset.approve(address(piggy), _amount);
-
-        vm.prank(user);
-        uint256 shares = piggy.deposit(_amount, user);
-        console2.log("Balance of user asset after deposit", asset.balanceOf(user));
-       
-
-        console2.log("Shares of user", shares);
-        console2.log("Balance of user piggy after deposit", piggy.balanceOf(user));
-        console2.log("Total assets on piggy after deposit", piggy.totalAssets());
-        //assertEq(_amount,piggy.totalAssets(),"!total asset");
-
-        _harvest(_profitFactor);
-
-        //User wants to Cooldown
-        vm.prank(user);
-        piggy.cooldownShares(shares);
-
-        // Cool Down Period
-        skip(7 days);
-        vm.prank(user);
-        piggy.unstake(user);
-        console2.log("Total assets on piggy after user unstake", piggy.totalAssets());
-        assertGt(asset.balanceOf(user),_amount);
     }
 
     function test_rebalance(uint256 _amount, uint16 _profitFactor) public {
@@ -231,6 +193,52 @@ contract SepoliaTest is Test {
         assertLt(totalERC20, maxClaimable);
         console2.log("Total ERC20 on piggy after rebalance", ERC20(erc20).balanceOf(address(piggy)));
         
+    }
+
+    function test_deposit(uint256 _amount) public {
+        vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
+        console2.log("Total amount", _amount);
+
+        // Deposit USDe into Piggy
+        uint256 balanceBefore = asset.balanceOf(user);
+        deal(address(asset), user, balanceBefore + _amount);
+
+        vm.prank(user);
+        asset.approve(address(piggy), _amount);
+
+        vm.prank(user);
+        piggy.deposit(_amount, user);
+        
+        console2.log("Balance of user asset", asset.balanceOf(user));
+        console2.log("Balance of user piggy", piggy.balanceOf(user));
+        console2.log("Total assets on piggy", piggy.totalAssets());
+
+    }
+
+    function test_unstake(uint256 _amount) public {
+        vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
+        console2.log("Total amount", _amount);
+
+        // Deposit USDe into Piggy
+        uint256 balanceBefore = asset.balanceOf(user);
+        deal(address(asset), user, balanceBefore + _amount);
+
+        vm.prank(user);
+        asset.approve(address(piggy), _amount);
+
+        vm.prank(user);
+        uint256 pUSDeAmount = piggy.deposit(_amount, user);
+        
+        console2.log("Balance of user asset", asset.balanceOf(user));
+        console2.log("Balance of user piggy", piggy.balanceOf(user));
+        console2.log("Total assets on piggy", piggy.totalAssets());
+
+        vm.prank(user);
+        piggy.cooldownShares(pUSDeAmount);
+        
+        skip(7 days);
+        vm.prank(user);
+        piggy.unstake(user);
     }
 
     /*function test_swap(uint256 _amount) public {

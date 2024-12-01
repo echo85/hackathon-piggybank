@@ -10,6 +10,7 @@ import {IStakedUSDe} from "src/interfaces/USDe/IStakedUSDe.sol";
 contract PiggyTest is Test {
     PiggyBank public piggy;
     address public user = address(10);
+    address public user2 = address(3);
     address public keeper = address(4);
     address public management = address(1);
     address public ownderSUSDe = 0x3B0AAf6e6fCd4a7cEEf8c92C32DFeA9E64dC1862;
@@ -249,7 +250,8 @@ contract PiggyTest is Test {
 
     }
 
-    function test_unstake(uint256 _amount) public {
+
+    function test_cooldown(uint256 _amount) public {
         vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
         console2.log("Total amount", _amount);
 
@@ -270,6 +272,44 @@ contract PiggyTest is Test {
         vm.prank(user);
         piggy.cooldownShares(pUSDeAmount);
         
+        skip(7 days);
+        vm.prank(user);
+        piggy.unstake(user);
+    }
+
+    function test_unstake(uint256 _amount) public {
+        vm.assume(_amount > minFuzzAmount && _amount < maxFuzzAmount);
+        console2.log("Total amount", _amount);
+
+        // Deposit USDe into Piggy
+        uint256 balanceBefore = asset.balanceOf(user);
+        deal(address(asset), user, balanceBefore + _amount);
+        deal(address(asset), user2, balanceBefore + _amount);
+
+        vm.prank(user);
+        asset.approve(address(piggy), _amount);
+
+        
+
+        vm.prank(user);
+        uint256 pUSDeAmount = piggy.deposit(_amount, user);
+        vm.prank(user);
+        piggy.cooldownShares(pUSDeAmount);
+
+        console2.log("Balance of user asset", asset.balanceOf(user));
+        console2.log("Balance of user piggy", piggy.balanceOf(user));
+        console2.log("Total assets on piggy", piggy.totalAssets());
+
+         vm.prank(user2);
+        asset.approve(address(piggy), _amount);
+
+        vm.prank(user2);
+        piggy.deposit(_amount, user2);
+        
+        console2.log("Balance of user 2 asset", asset.balanceOf(user2));
+        console2.log("Balance of user 2 piggy", piggy.balanceOf(user2));
+        console2.log("Total assets on piggy", piggy.totalAssets());
+
         skip(7 days);
         vm.prank(user);
         piggy.unstake(user);

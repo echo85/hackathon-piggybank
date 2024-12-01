@@ -13,7 +13,7 @@ inspect :; forge inspect ${contract} storage-layout --pretty
 FORK_URL := ${ETH_RPC_URL} # BLE_RPC_URL, ETH_RPC_URL, SEPOLIA_RPC_URL
 
 # if we want to run only matching tests, set that here
-contract := Sepolia
+contract := Piggy
 test := test_
 
 # local tests without fork

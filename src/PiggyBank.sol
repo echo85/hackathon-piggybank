@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {UniswapV3Swapper} from "src/UniswapV3Swapper.sol";
+import "./USDeSilo.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
@@ -30,7 +31,7 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
     uint256 public percentageERC20 = 20;
     bytes32 public priceFeedIdERC20 = 0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace; // WETH/USD     
     bytes32 public priceFeedIdUSDe = 0x6ec879b1e9963de5ee97e9c8710b742d6228252a5e2ca12d4ae81d7fe5ee8c5d; // USDe/USD
-    
+    USDeSilo public immutable silo;
     mapping(address => UserCooldown) public cooldowns;
     /// @notice Error emitted when cooldown value is invalid
      error InvalidCooldown();
@@ -58,6 +59,7 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
         priceFeedIdUSDe = _priceFeedIdUSDe;
         cooldownDuration = vault.cooldownDuration();
         router = _uniswaprouter;
+        silo = new USDeSilo(address(this), address(asset_));
     }
 
     function updateERC20(address _erc20, bytes32 _priceFeedId) external onlyOwner {
@@ -79,8 +81,8 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
 
    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
         
-        super._deposit(caller, receiver, assets, shares); //Deposit User USDe to SC
-        vault.deposit(assets,address(this)); //Staking USDe to Staking USD
+        super._deposit(caller, receiver, assets, shares); 
+        vault.deposit(assets,address(this));
         lastSnapshotValue = lastSnapshotValue + assets;
     }
 
@@ -92,16 +94,16 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
         cooldowns[msg.sender].cooldownEnd = uint104(block.timestamp) + cooldownDuration;
         cooldowns[msg.sender].underlyingAmount += uint152(assets);
         uint256 usdeAvailable = _valueOfAsset();
-        console.log("Cooldown request for %s, sUSDe value on piggy: %s Total assets %s", assets, _valueOfVault(),  totalAssets());
-        
-        uint256 value = (_valueOfErc20() * 100) / totalAssets();
-        console.log("Value Percentage", value);
-        
+              
         if (usdeAvailable < assets) {
                 uint256 deficit = assets - usdeAvailable;
                 require(_valueOfVault() >= deficit, "Insufficient Liquidity");
-
                 vault.cooldownAssets(deficit);
+                _withdraw(msg.sender, address(silo), msg.sender, usdeAvailable, shares);
+                
+        }
+        else {
+            _withdraw(msg.sender, address(silo), msg.sender, assets, shares);
         }
         
     }
@@ -116,6 +118,10 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
                 require(_valueOfVault() >= deficit, "Insufficient Liquidity");
 
                 vault.cooldownAssets(deficit);
+                _withdraw(msg.sender, address(silo), msg.sender, usdeAvailable, shares);
+        }
+        else {
+            _withdraw(msg.sender, address(silo), msg.sender, assets, shares);
         }
     }
 
@@ -128,10 +134,14 @@ contract PiggyBank is ERC4626, UniswapV3Swapper, Ownable, ERC20Permit {
             userCooldown.cooldownEnd = 0;
             userCooldown.underlyingAmount = 0;
 
-            uint256 shares = _convertToShares(assets, Math.Rounding.Floor);
-            require(_valueOfAsset() >= assets, "Insufficient USDe after swaps");
-            if(shares > balanceOf(msg.sender)) shares = balanceOf(msg.sender);
-            _withdraw(msg.sender, _receiver, msg.sender, assets, shares);
+            uint256 deficit = assets - ERC20(asset()).balanceOf(address(silo));
+            console.log(deficit);
+            console.log(ERC20(asset()).balanceOf(address(silo)));
+            if(deficit > 0) {
+                SafeERC20.safeTransfer(ERC20(asset()), address(silo), deficit);
+            }
+            require(ERC20(asset()).balanceOf(address(silo)) >= assets, "Insufficient USDe");
+            silo.withdraw(address(_receiver), assets);
          } else {
             revert InvalidCooldown();
         }

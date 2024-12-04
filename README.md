@@ -8,7 +8,7 @@ https://miro.com/app/board/uXjVLFMUypU=/
 
 **DEMO APP**
 <br>
-https://vercel.com/carlo-falchis-projects/hackathon-piggybank-frontend<br>
+(https://hackathon-piggybank-frontend.vercel.app/<br>
 
 **FRONTEND GITHUB**
 <br>

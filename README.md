@@ -1,7 +1,7 @@
 # Piggy Bank
 
 ### PiggyBank is a blazing fast, yield-bearing smart contract based on the ERC-4626 standard
-I created a yield-bearing smart contract based on the ERC-4626 standard. The contract accept USDe as input, staking it to earn a current APY on sUSDe. Every 7 days, the accrued yield would be used to purchase ERC-20 tokens, such as popular meme coins, with the potential profits or losses distributed back to the vault. Upon redemption, users would receive their initial USDe plus any speculative returns. <br>
+I created a yield-bearing smart contract based on the ERC-4626 standard. The contract accepts USDe as input, staking it to earn a current APY on sUSDe. Every 7 days, the accrued yield will be used to purchase ERC-20 tokens, such as popular meme coins, with the potential profits or losses distributed back to the vault. Upon redemption, users will receive their initial USDe plus any speculative returns. <br>
 
 **Project Miro IDEA**
 https://miro.com/app/board/uXjVLFMUypU=/

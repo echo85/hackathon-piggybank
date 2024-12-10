@@ -30,17 +30,23 @@ block explorer: https://dashboard.tenderly.co/explorer/vnet/64aff5e0-624b-4af0-b
 <br>
 ```WETH TOKEN - 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 (used as ERC20 example on Mainnet)
 PIGGY Bank ERC4626 - 0x349D6F9f6b81630695eCb317062416fae508f13D 
-Piggy Bankg OFT Adapter - 0x7f4DD85e7f6ACbf81687cfc4AEDC5EFcC43eCb55
+Piggy Bank OFT Adapter - 0x7f4DD85e7f6ACbf81687cfc4AEDC5EFcC43eCb55
 ```
 
 **SEPOLIA Smart Contract**
 ```
 PIGGY TOKEN: 0x6296665981B7bf5E39B8b7a1021692289212825A (used as ERC20 example on Sepolia)
 PIGGY Bank ERC4626 - 0x9A41EfcE7b872576fd6B16490b6C3Fe6eB4973Bc 
-Piggy Bankg OFT Adapter - 0xb98d9c8B1E5C05065517ED0Bb496B1c61Ee18d1C
+Piggy Bank OFT Adapter - 0xb98d9c8B1E5C05065517ED0Bb496B1c61Ee18d1C
 ```
 
 **Ble Smart Contract**
 ```
-Piggy Bankg OFT - 0xE2fC214c6A7E7BFD7DdD2Aa4043E2660dFD75dBB
+Piggy Bank OFT - 0xE2fC214c6A7E7BFD7DdD2Aa4043E2660dFD75dBB
 ```
+
+**Gelato Network**
+
+The two methods called from the authorized keeper (Gelato Network) in order to rebalance and harvest the ERC4626 from Gelato Network
+![alt text](https://github.com/echo85/hackathon-piggybank/blob/main/gelatoHarvest.png)
+![alt text](https://github.com/echo85/hackathon-piggybank/blob/main/gelatoRebalance.png)

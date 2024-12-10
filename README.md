@@ -48,5 +48,4 @@ Piggy Bank OFT - 0xE2fC214c6A7E7BFD7DdD2Aa4043E2660dFD75dBB
 **Gelato Network**
 
 The two methods called from the authorized keeper (Gelato Network) in order to rebalance and harvest the ERC4626 from Gelato Network
-![alt text](https://github.com/echo85/hackathon-piggybank/blob/main/gelatoHarvest.png)
-![alt text](https://github.com/echo85/hackathon-piggybank/blob/main/gelatoRebalance.png)
+![alt text](https://github.com/echo85/hackathon-piggybank/blob/main/gelatoNetwork.png)
